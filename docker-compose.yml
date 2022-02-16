@@ -2,7 +2,8 @@ version: "3"
 services:
 
   keydb:
-    image: eqalpha/keydb:latest
+    build:
+      dockerfile: Dockerfile
     container_name: keydb
     # command: keydb-server /etc/keydb/redis.conf --server-threads 2 --active-replica yes --replicaof 192.168.1.1 6379
     # command: keydb-server /etc/keydb/redis.conf --server-threads 2 --active-replica yes --replicaof 192.168.1.2 6379

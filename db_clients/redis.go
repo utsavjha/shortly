@@ -12,7 +12,7 @@ var EXPIRATION_TIME = time.Hour * 4
 
 func StoreURL(conn *redis.Conn, ctx *context.Context, shortlyURL *DM.ShortlyURLS) {
 	go func() {
-		err := conn.Set(*ctx, shortlyURL.Redirect, shortlyURL.Parent, EXPIRATION_TIME).Err()
+		err := conn.Set(*ctx, shortlyURL.Redirect, shortlyURL.Parent.URL, EXPIRATION_TIME).Err()
 		if err != nil {
 			panic(fmt.Sprintf("Failed saving key url | Error: %v - shortUrl: %s - originalUrl: %s\n", err, shortlyURL.Redirect, shortlyURL.Parent))
 		}
