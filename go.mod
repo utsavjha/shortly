@@ -5,15 +5,15 @@ go 1.17
 require (
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-redis/redis/v8 v8.11.4
-	shortner v0.0.0-00010101000000-000000000000
 	shortly.data.data_model v0.0.1
 	shortly.db.clients v0.0.1
+	shortner v0.0.0-00010101000000-000000000000
 )
 
 replace (
-	shortner => ./shortner_mod
 	shortly.data.data_model => ./data
 	shortly.db.clients => ./db_clients
+	shortner => ./shortner_mod
 )
 
 require (

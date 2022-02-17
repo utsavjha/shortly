@@ -19,14 +19,15 @@ const ServerUrl = "http://shortly:8080/"
 func main() {
 	var ctx = context.Background()
 	var r *gin.Engine = gin.Default()
-	r.SetTrustedProxies([]string{"[::1]"})
+	//r.SetTrustedProxies([]string{"[::1]"})
 	ipChannel := make(chan string, 1000)
 	defer close(ipChannel)
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     "keydb:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
+
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "pong",
@@ -48,7 +49,7 @@ func main() {
 }
 
 func shortenURL(conn *redis.Conn, ctx *context.Context, IPChannel chan string) gin.HandlerFunc {
-	//curl -X 'POST' http://localhost:8080/url -H 'content-type: application/json' -d '{"url":"http://abc-xyz.com"}'
+	//curl -X 'POST' http://shortly:8080/url -H 'content-type: application/json' -d '{"url":"http://abc-xyz.com"}'
 	//curl -X 'POST' http://localhost:8080/retrieve -H 'content-type: application/json' -d '{"url":"http://shortly:8080/ddee56b7a0cb1a8af87d4f86ebd7365035e6d29e"}'
 	var url DM.URLToShorten
 	hn := func(gc *gin.Context) {

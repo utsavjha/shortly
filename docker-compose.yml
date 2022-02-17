@@ -3,7 +3,7 @@ services:
 
   keydb:
     build:
-      dockerfile: Dockerfile
+      dockerfile: keydb/Dockerfile
     container_name: keydb
     # command: keydb-server /etc/keydb/redis.conf --server-threads 2 --active-replica yes --replicaof 192.168.1.1 6379
     # command: keydb-server /etc/keydb/redis.conf --server-threads 2 --active-replica yes --replicaof 192.168.1.2 6379
@@ -15,6 +15,15 @@ services:
       - 6379:6379
     restart: unless-stopped
 
+  shortly:
+    build:
+      dockerfile: Dockerfile
+    container_name: shortly
+    ports:
+      - 8080:8080
+    restart: unless-stopped
+
 volumes:
   data:
     driver: local
+
