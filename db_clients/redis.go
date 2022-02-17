@@ -4,17 +4,21 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-redis/redis/v8"
+	"log"
 	DM "shortly.data.data_model"
 	"time"
 )
 
-var EXPIRATION_TIME = time.Hour * 4
+const ExpirationTime = time.Hour * 4
 
 func StoreURL(conn *redis.Conn, ctx *context.Context, shortlyURL *DM.ShortlyURLS) {
 	go func() {
-		err := conn.Set(*ctx, shortlyURL.Redirect, shortlyURL.Parent.URL, EXPIRATION_TIME).Err()
-		if err != nil {
-			panic(fmt.Sprintf("Failed saving key url | Error: %v - shortUrl: %s - originalUrl: %s\n", err, shortlyURL.Redirect, shortlyURL.Parent))
+		for idx, url := range shortlyURL.Redirects {
+			err := conn.Set(*ctx, url, shortlyURL.Parent.Urls[idx], ExpirationTime).Err()
+			if err != nil {
+				log.Println(fmt.Sprintf("Error!!! Failed saving key url | Error: %v - shortUrl: %s - originalUrl: %s\n", err, shortlyURL.Redirects, shortlyURL.Parent))
+				panic(fmt.Sprintf("Failed saving key url | Error: %v - shortUrl: %s - originalUrl: %s\n", err, shortlyURL.Redirects, shortlyURL.Parent))
+			}
 		}
 	}()
 }

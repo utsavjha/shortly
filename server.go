@@ -14,7 +14,8 @@ import (
 	"strings"
 )
 
-const ServerUrl = "http://shortly:8080/"
+const ShortlyServerURL = "http://shortly:8080/"
+const KeyDBURL = "keydb:6379"
 
 func main() {
 	var ctx = context.Background()
@@ -23,7 +24,7 @@ func main() {
 	ipChannel := make(chan string, 1000)
 	defer close(ipChannel)
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     "keydb:6379",
+		Addr:     KeyDBURL,
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
@@ -49,8 +50,7 @@ func main() {
 }
 
 func shortenURL(conn *redis.Conn, ctx *context.Context, IPChannel chan string) gin.HandlerFunc {
-	//curl -X 'POST' http://shortly:8080/url -H 'content-type: application/json' -d '{"url":"http://abc-xyz.com"}'
-	//curl -X 'POST' http://localhost:8080/retrieve -H 'content-type: application/json' -d '{"url":"http://shortly:8080/ddee56b7a0cb1a8af87d4f86ebd7365035e6d29e"}'
+	//curl -X 'POST' http://shortly:8080/url -H 'content-type: application/json' -d '{"urls": ["http://abcxyz.com","http://facebook.com","http://google.com","http://amazon.com","http://bol.com"]}'
 	var url DM.URLToShorten
 	hn := func(gc *gin.Context) {
 		GetIP(gc.Request, IPChannel)
@@ -59,22 +59,23 @@ func shortenURL(conn *redis.Conn, ctx *context.Context, IPChannel chan string) g
 			log.Fatal(http.StatusBadRequest, err)
 			return
 		}
-		url.Id = <-IPChannel
-		fmt.Printf("YourIP: %s\n", url.Id)
-		shortlyURLS := DM.NewShortlyURLS(url)
-		shortlyURLS.Redirect = shortner.ShortenIt(&shortlyURLS.Parent)
+		shortlyURLS := DM.CreateShortlyURL(url)
 
+		url.Id = <-IPChannel
+		//fmt.Printf("YourIP: %s\n", url.Id)
+		shortner.ShortenIt(shortlyURLS)
 		shortlyRedisClient.StoreURL(conn, ctx, shortlyURLS)
-		var completeShortURL = fmt.Sprintf("%s%s", ServerUrl, shortlyURLS.Redirect)
-		fmt.Printf("Saved shortUrl: %s - originalUrl: %s\n", completeShortURL, shortlyURLS.Parent)
-		gc.JSON(http.StatusAccepted, completeShortURL)
+
+		fmt.Printf("Saved shortUrl from User: %s\n", shortlyURLS.Parent.Id)
+		for idx, shortenedURL := range shortlyURLS.Redirects {
+			gc.JSON(http.StatusOK, fmt.Sprintf("%s --> %s", shortlyURLS.Parent.Urls[idx], shortenedURL))
+		}
 	}
 	return hn
 }
 
 func fetchRedirect(conn *redis.Conn, ctx *context.Context) gin.HandlerFunc {
-	//http://localhost:8080/7Wxs5pyEKqqG6gPaJwJSsBndg7MyjXZB74GiNJ3b5Hrn
-	//curl -X 'POST' http://localhost:8080/retrieve -H 'content-type: application/json' -d '{"url":"http://localhost:8080/7Wxs5pyEKqqG6gPaJwJSsBndg7MyjXZB74GiNJ3b5Hrn"}'
+	//curl -X 'POST' http://shortly:8080/retrieve -H 'content-type: application/json' -d '{"url":"http://shortly:8080/2ccf2e089861edd16a48f5b83e91e9b3cb4852be"}'
 	var url DM.RetrieveURL
 	hn := func(gc *gin.Context) {
 		if err := gc.ShouldBindBodyWith(&url, binding.JSON); err != nil {
@@ -82,23 +83,13 @@ func fetchRedirect(conn *redis.Conn, ctx *context.Context) gin.HandlerFunc {
 			log.Fatal(http.StatusBadRequest, err)
 			return
 		}
-		var redisKey = strings.Split(url.URL, ServerUrl)[1]
+		var redisKey = strings.Split(url.URL, ShortlyServerURL)[1]
 		var parent = shortlyRedisClient.RetrieveURL(conn, ctx, redisKey)
-		gc.JSON(http.StatusAccepted, fmt.Sprintf("redirecting to --> %s", parent))
+		gc.JSON(http.StatusOK, fmt.Sprintf("redirecting to --> %s", parent))
 	}
 
 	return hn
 }
-
-//
-//func makeLotsOfRequests() {
-//	client := &http.Client{}
-//
-//	req, _ := http.NewRequest("GET", "http://localhost:8080/url", nil)
-//	req.Header.Add("Accept", "application/json")
-//	resp, err := client.Do(req)
-//
-//}
 
 // GetIP gets a requests IP address by reading off the forwarded-for
 // header (for proxies) and falls back to use the remote address.

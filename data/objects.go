@@ -10,21 +10,21 @@ func (i URLToShorten) MarshalBinary() ([]byte, error) {
 }
 
 type URLToShorten struct {
-	Id  string
-	URL string `form:"inpURL" json:"url" binding:"required"`
+	Id   string
+	Urls []string `json:"urls" binding:"required"`
 }
 
 type RetrieveURL struct {
-	URL string `form:"inpURL" json:"url" binding:"required"`
+	URL string `json:"url" binding:"required"`
 }
 
 type ShortlyURLS struct {
-	Parent   URLToShorten
-	Redirect string
+	Parent    URLToShorten
+	Redirects []string
 }
 
-func NewShortlyURLS(url URLToShorten) *ShortlyURLS {
-	return &ShortlyURLS{Parent: url}
+func CreateShortlyURL(urls URLToShorten) *ShortlyURLS {
+	return &ShortlyURLS{Parent: urls, Redirects: make([]string, len(urls.Urls))}
 }
 
 type autoInc struct {
