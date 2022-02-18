@@ -9,12 +9,9 @@ import (
 	"log"
 	"net/http"
 	DM "shortly.data.data_model"
-	shortlyRedisClient "shortly.db.clients"
-	"shortner"
-	"strings"
+	worker "shortly.workers"
 )
 
-const ShortlyServerURL = "http://shortly:8080/"
 const KeyDBURL = "keydb:6379"
 
 func main() {
@@ -22,7 +19,16 @@ func main() {
 	var r *gin.Engine = gin.Default()
 	//r.SetTrustedProxies([]string{"[::1]"})
 	ipChannel := make(chan string, 1000)
+	userLongURLInputChannel := make(chan *DM.ShortlyURLS, 1000)
+	userShortlyOutputChannel := make(chan *DM.ShortlyURLS, 1000)
+	userInputShortlyURLsChannel := make(chan DM.RetrieveURL, 1000)
+	shortenedURLChannel := make(chan string, 1000)
+
 	defer close(ipChannel)
+	defer close(userLongURLInputChannel)
+	defer close(userShortlyOutputChannel)
+	defer close(shortenedURLChannel)
+	defer close(userInputShortlyURLsChannel)
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     KeyDBURL,
 		Password: "", // no password set
@@ -41,15 +47,15 @@ func main() {
 	if err := c1.ClientSetName(ctx, "shortener").Err(); err != nil {
 		panic(err)
 	}
-	r.POST("/url", shortenURL(c1, &ctx, ipChannel))
-	r.POST("/retrieve", fetchRedirect(c2, &ctx))
+	r.POST("/url", shortenURL(c1, &ctx, ipChannel, userLongURLInputChannel, userShortlyOutputChannel))
+	r.POST("/retrieve", fetchRedirect(c2, &ctx, userInputShortlyURLsChannel))
 	// listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 	r.Run()
 	c1.Close()
 	c2.Close()
 }
 
-func shortenURL(conn *redis.Conn, ctx *context.Context, IPChannel chan string) gin.HandlerFunc {
+func shortenURL(conn *redis.Conn, ctx *context.Context, IPChannel chan string, userInputsChannel chan *DM.ShortlyURLS, shortlyURLOutputChannel chan *DM.ShortlyURLS) gin.HandlerFunc {
 	//curl -X 'POST' http://shortly:8080/url -H 'content-type: application/json' -d '{"urls": ["http://abcxyz.com","http://facebook.com","http://google.com","http://amazon.com","http://bol.com"]}'
 	var url DM.URLToShorten
 	hn := func(gc *gin.Context) {
@@ -59,35 +65,32 @@ func shortenURL(conn *redis.Conn, ctx *context.Context, IPChannel chan string) g
 			log.Fatal(http.StatusBadRequest, err)
 			return
 		}
-		shortlyURLS := DM.CreateShortlyURL(url)
-
-		url.Id = <-IPChannel
-		//fmt.Printf("YourIP: %s\n", url.Id)
-		shortner.ShortenIt(shortlyURLS)
-		shortlyRedisClient.StoreURL(conn, ctx, shortlyURLS)
-
-		fmt.Printf("Saved shortUrl from User: %s\n", shortlyURLS.Parent.Id)
-		for idx, shortenedURL := range shortlyURLS.Redirects {
-			gc.JSON(http.StatusOK, fmt.Sprintf("%s --> %s", shortlyURLS.Parent.Urls[idx], shortenedURL))
+		userInputsChannel <- DM.CreateShortlyURL(url)
+		worker.ShortenInputURLs(conn, ctx, userInputsChannel, IPChannel, shortlyURLOutputChannel)
+		for shortlyURL := range shortlyURLOutputChannel {
+			gc.JSON(http.StatusOK, fmt.Sprintf("%s --> %s", shortlyURL.Parent.Urls, shortlyURL.Redirects))
 		}
 	}
 	return hn
 }
 
-func fetchRedirect(conn *redis.Conn, ctx *context.Context) gin.HandlerFunc {
+func fetchRedirect(conn *redis.Conn, ctx *context.Context, inputShortlyURLsChannel chan DM.RetrieveURL) gin.HandlerFunc {
 	//curl -X 'POST' http://shortly:8080/retrieve -H 'content-type: application/json' -d '{"url":"http://shortly:8080/2ccf2e089861edd16a48f5b83e91e9b3cb4852be"}'
 	var url DM.RetrieveURL
+	parentsChannel := make(chan string)
+	defer close(parentsChannel)
 	hn := func(gc *gin.Context) {
 		if err := gc.ShouldBindBodyWith(&url, binding.JSON); err != nil {
 			gc.JSON(http.StatusBadRequest, err)
 			log.Fatal(http.StatusBadRequest, err)
 			return
 		}
-		var redisKey = strings.Split(url.URL, ShortlyServerURL)[1]
-		var parent = shortlyRedisClient.RetrieveURL(conn, ctx, redisKey)
-		gc.JSON(http.StatusOK, fmt.Sprintf("redirecting to --> %s", parent))
+		inputShortlyURLsChannel <- url
+		worker.RetrieveParentsOfShortlyURLs(conn, ctx, inputShortlyURLsChannel, parentsChannel)
+		for shortenedURL := range parentsChannel {
+			gc.JSON(http.StatusOK, fmt.Sprintf("redirecting to --> %s", shortenedURL))
+		}
 	}
-
 	return hn
 }
 

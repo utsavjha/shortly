@@ -23,10 +23,11 @@ func StoreURL(conn *redis.Conn, ctx *context.Context, shortlyURL *DM.ShortlyURLS
 	}()
 }
 
-func RetrieveURL(conn *redis.Conn, ctx *context.Context, redisKeyToSearch string) string {
+func RetrieveURL(conn *redis.Conn, ctx *context.Context, redisKeyToSearch string,
+	redirectChannel chan<- string) {
 	var parent, err = conn.Get(*ctx, redisKeyToSearch).Result()
 	if err != nil {
 		panic(fmt.Sprintf("Failed RetrieveInitialUrl url | Error: %v - shortUrl: %s\n", err, redisKeyToSearch))
 	}
-	return parent
+	redirectChannel <- parent
 }

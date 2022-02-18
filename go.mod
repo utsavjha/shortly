@@ -6,13 +6,13 @@ require (
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-redis/redis/v8 v8.11.4
 	shortly.data.data_model v0.0.1
-	shortly.db.clients v0.0.1
-	shortner v0.0.0-00010101000000-000000000000
+	shortly.workers v0.0.1
 )
 
 replace (
 	shortly.data.data_model => ./data
 	shortly.db.clients => ./db_clients
+	shortly.workers => ./workers
 	shortner => ./shortner_mod
 )
 
@@ -34,4 +34,6 @@ require (
 	golang.org/x/sys v0.0.0-20210423082822-04245dca01da // indirect
 	google.golang.org/protobuf v1.26.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	shortly.db.clients v0.0.1 // indirect
+	shortner v0.0.1 // indirect
 )
