@@ -11,7 +11,7 @@ import (
 
 const ExpirationTime = time.Hour * 4
 
-func StoreURL(conn *redis.Conn, ctx *context.Context, shortlyURL *DM.ShortlyURLS) {
+func StoreURL(conn *redis.Conn, ctx *context.Context, shortlyURL DM.ShortlyURLS) {
 	go func() {
 		for idx, url := range shortlyURL.Redirects {
 			err := conn.Set(*ctx, url, shortlyURL.Parent.Urls[idx], ExpirationTime).Err()
@@ -23,11 +23,18 @@ func StoreURL(conn *redis.Conn, ctx *context.Context, shortlyURL *DM.ShortlyURLS
 	}()
 }
 
-func RetrieveURL(conn *redis.Conn, ctx *context.Context, redisKeyToSearch string,
+func FetchKey(conn *redis.Conn, ctx *context.Context, redisKeyToSearch *string,
 	redirectChannel chan<- string) {
-	var parent, err = conn.Get(*ctx, redisKeyToSearch).Result()
-	if err != nil {
-		panic(fmt.Sprintf("Failed RetrieveInitialUrl url | Error: %v - shortUrl: %s\n", err, redisKeyToSearch))
-	}
-	redirectChannel <- parent
+	go func(redisKey *string) {
+		var parent, err = conn.Get(*ctx, *redisKey).Result()
+		if err != nil {
+			panic(fmt.Sprintf("Failed RetrieveInitialUrl url | Error: %v - shortUrl: %s\n", err, *redisKey)
+		}
+		redirectChannel <- parent
+	}(redisKeyToSearch)
+	//var parent, err = conn.Get(*ctx, *redisKeyToSearch).Result()
+	//if err != nil {
+	//	panic(fmt.Sprintf("Failed RetrieveInitialUrl url | Error: %v - shortUrl: %s\n", err, *redisKeyToSearch))
+	//}
+	//redirectChannel <- parent
 }
