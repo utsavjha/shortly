@@ -37,7 +37,7 @@ func DetermineRedisKeys(conn *redis.Conn, ctx *context.Context,
 func RetrieveParentsOfShortlyURLs(conn *redis.Conn, ctx *context.Context,
 	url DM.InputURL, redirectsChannel chan string) DM.ShortlyURLS {
 	shortlyURL := DM.CreateRetrievalURL(url)
-	DetermineRedisKeys(conn, ctx, shortlyURL.Redirects, redirectsChannel)
+	go DetermineRedisKeys(conn, ctx, shortlyURL.Redirects, redirectsChannel)
 	x := 0
 	for {
 		select {
