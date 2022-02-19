@@ -6,6 +6,7 @@ WORKDIR /app
 COPY data* ./data
 COPY db_clients* ./db_clients
 COPY shortner_mod* ./shortner_mod
+COPY workers* ./workers
 
 COPY go.mod go.sum ./
 RUN go mod download

@@ -5,26 +5,26 @@ import (
 	"sync"
 )
 
-func (i URLToShorten) MarshalBinary() ([]byte, error) {
+func (i InputURL) MarshalBinary() ([]byte, error) {
 	return json.Marshal(i)
 }
 
-type URLToShorten struct {
+type InputURL struct {
 	Id   string
 	Urls []string `json:"urls" binding:"required"`
 }
 
-type RetrieveURL struct {
-	URL string `json:"url" binding:"required"`
-}
-
 type ShortlyURLS struct {
-	Parent    URLToShorten
+	Parent    InputURL
 	Redirects []string
 }
 
-func CreateShortlyURL(urls URLToShorten) *ShortlyURLS {
-	return &ShortlyURLS{Parent: urls, Redirects: make([]string, len(urls.Urls))}
+func CreateShortlyURL(urls InputURL) ShortlyURLS {
+	return ShortlyURLS{Parent: urls, Redirects: make([]string, len(urls.Urls))}
+}
+
+func CreateRetrievalURL(urls InputURL) ShortlyURLS {
+	return ShortlyURLS{Redirects: urls.Urls, Parent: InputURL{Urls: make([]string, len(urls.Urls))}}
 }
 
 type autoInc struct {
