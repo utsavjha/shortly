@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const KeyDBURL = "localhost:6379"
+const KeyDBURL = "keydb:6379"
 
 func CreateConnection() *redis.Client {
 	return redis.NewClient(&redis.Options{

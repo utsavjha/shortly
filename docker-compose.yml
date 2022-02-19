@@ -17,13 +17,35 @@ services:
       - 6379:6379
     restart: unless-stopped
 
-#  shortly:
-#    build:
-#      dockerfile: Dockerfile
-#    container_name: shortly
-#    ports:
-#      - 8080:8080
-#    restart: unless-stopped
+  shortly:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    container_name: shortly
+    ports:
+      - 8080:8080
+    restart: unless-stopped
+
+  localstack:
+    image: localstack/localstack
+    container_name: localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DATA_DIR=/opt/data
+      - HOSTNAME=localstack
+      - HOSTNAME_EXTERNAL=localstack
+      - DEFAULT_REGION=india
+      - AWS_DEFAULT_REGION=india
+      - AWS_ACCESS_KEY_ID=localAccessKeyID
+      - AWS_SECRET_ACCESS_KEY=localSecretAccess
+    volumes:
+      - ./keydb/data:/opt/data
+    command:
+      - pip install awscli
+      - aws s3api create-bucket --bucket localbucket --region india --endpoint-url http://localstack:4566
+      - aws s3 ls s3://localbucket --endpoint-url http://localstack:4566
 
 volumes:
   data:

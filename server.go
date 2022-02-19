@@ -59,7 +59,7 @@ func shortenURL(conn *redis.Conn, ctx *context.Context, IPChannel chan string, u
 	hn := func(gc *gin.Context) {
 		worker.GetIP(gc.Request, IPChannel)
 		if err := gc.ShouldBindBodyWith(&url, binding.JSON); err != nil {
-			gc.AbortWithError(http.StatusBadRequest, err)
+			gc.JSON(http.StatusBadRequest, err)
 			log.Fatal(http.StatusBadRequest, err)
 			return
 		}
@@ -78,7 +78,9 @@ func fetchRedirect(conn *redis.Conn, ctx *context.Context, outputRedirectsChanne
 			return
 		}
 		redirectURL := worker.RetrieveParentsOfShortlyURLs(conn, ctx, url, outputRedirectsChannel)
-		gc.JSON(http.StatusOK, fmt.Sprintf("redirecting %v to ---- %v", redirectURL.Redirects, redirectURL.Parent.Urls))
+		for _, redirect := range redirectURL.Parent.Urls {
+			gc.Redirect(http.StatusPermanentRedirect, redirect)
+		}
 	}
 	return hn
 }
