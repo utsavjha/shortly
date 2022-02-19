@@ -8,9 +8,11 @@ import (
 	shortlyRedisClient "shortly.db.clients"
 	"shortner"
 	"strings"
+	"time"
 )
 
 const ShortlyServerURL = "http://shortly:8080/"
+const ExpirationTime = time.Hour * 4
 
 func ShortenInputURLs(conn *redis.Conn, ctx *context.Context,
 	shortlyChannel <-chan DM.ShortlyURLS, ip string, shortenedURLChannel chan<- DM.ShortlyURLS) {
@@ -20,7 +22,7 @@ func ShortenInputURLs(conn *redis.Conn, ctx *context.Context,
 			case url := <-shortlyChannel:
 				url.Parent.Id = ip
 				shortner.ShortenIt(url)
-				shortlyRedisClient.StoreURL(conn, ctx, url)
+				shortlyRedisClient.StoreURL(conn, ctx, url, ExpirationTime)
 				shortenedURLChannel <- url
 				return
 			}

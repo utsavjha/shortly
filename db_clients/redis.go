@@ -9,12 +9,20 @@ import (
 	"time"
 )
 
-const ExpirationTime = time.Hour * 4
+const KeyDBURL = "localhost:6379"
 
-func StoreURL(conn *redis.Conn, ctx *context.Context, shortlyURL DM.ShortlyURLS) {
+func CreateConnection() *redis.Client {
+	return redis.NewClient(&redis.Options{
+		Addr:     KeyDBURL,
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+}
+
+func StoreURL(conn *redis.Conn, ctx *context.Context, shortlyURL DM.ShortlyURLS, expiryTime time.Duration) {
 	go func() {
 		for idx, url := range shortlyURL.Redirects {
-			err := conn.Set(*ctx, url, shortlyURL.Parent.Urls[idx], ExpirationTime).Err()
+			err := conn.Set(*ctx, url, shortlyURL.Parent.Urls[idx], expiryTime).Err()
 			if err != nil {
 				log.Println(fmt.Sprintf("Error!!! Failed saving key url | Error: %v - shortUrl: %s - originalUrl: %s\n", err, shortlyURL.Redirects, shortlyURL.Parent))
 				panic(fmt.Sprintf("Failed saving key url | Error: %v - shortUrl: %s - originalUrl: %s\n", err, shortlyURL.Redirects, shortlyURL.Parent))

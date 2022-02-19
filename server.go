@@ -9,10 +9,9 @@ import (
 	"log"
 	"net/http"
 	DM "shortly.data.data_model"
+	db_clients "shortly.db.clients"
 	worker "shortly.workers"
 )
-
-const KeyDBURL = "localhost:6379"
 
 func main() {
 	var ctx = context.Background()
@@ -27,30 +26,32 @@ func main() {
 	defer close(userLongURLInputChannel)
 	defer close(userShortlyOutputChannel)
 	defer close(shortenedURLChannel)
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     KeyDBURL,
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
+
+	rdb := db_clients.CreateConnection()
+	c1 := rdb.Conn(ctx)
+	c2 := rdb.Conn(ctx)
+	if err := c1.ClientSetName(ctx, "shortener").Err(); err != nil {
+		panic(err)
+	}
 
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "pong",
 		})
 	})
-
-	//sampleDataRequest := ""
-	c1 := rdb.Conn(ctx)
-	c2 := rdb.Conn(ctx)
-	if err := c1.ClientSetName(ctx, "shortener").Err(); err != nil {
-		panic(err)
-	}
 	r.POST("/shorten", shortenURL(c1, &ctx, ipChannel, userLongURLInputChannel, userShortlyOutputChannel))
 	r.POST("/retrieve", fetchRedirect(c2, &ctx, shortenedURLChannel))
+
 	// listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
-	r.Run()
-	c1.Close()
-	c2.Close()
+	errConnection, errConnection2 := c1.Close(), c2.Close()
+	if errConnection != nil || errConnection2 != nil {
+		log.Print("Unable to Close connection!")
+	}
+
+	err := r.Run()
+	if err != nil {
+		log.Fatal("Unable to Start Server!", err.Error())
+	}
 }
 
 func shortenURL(conn *redis.Conn, ctx *context.Context, IPChannel chan string, userInputsChannel chan DM.ShortlyURLS, shortlyURLOutputChannel chan DM.ShortlyURLS) gin.HandlerFunc {
