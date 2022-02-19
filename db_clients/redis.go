@@ -28,13 +28,8 @@ func FetchKey(conn *redis.Conn, ctx *context.Context, redisKeyToSearch *string,
 	go func(redisKey *string) {
 		var parent, err = conn.Get(*ctx, *redisKey).Result()
 		if err != nil {
-			panic(fmt.Sprintf("Failed RetrieveInitialUrl url | Error: %v - shortUrl: %s\n", err, *redisKey)
+			panic(fmt.Sprintf("Failed RetrieveInitialUrl url | Error: %v - shortUrl: %s\n", err, *redisKey))
 		}
 		redirectChannel <- parent
 	}(redisKeyToSearch)
-	//var parent, err = conn.Get(*ctx, *redisKeyToSearch).Result()
-	//if err != nil {
-	//	panic(fmt.Sprintf("Failed RetrieveInitialUrl url | Error: %v - shortUrl: %s\n", err, *redisKeyToSearch))
-	//}
-	//redirectChannel <- parent
 }

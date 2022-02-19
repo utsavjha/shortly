@@ -82,7 +82,7 @@ func fetchRedirect(conn *redis.Conn, ctx *context.Context, URLRetrievalChannel c
 			log.Fatal(http.StatusBadRequest, err)
 			return
 		}
-		redirectURL := worker.RetrieveParentsOfShortlyURLs(conn, ctx, url, URLRetrievalChannel, outputRedirectsChannel)
+		redirectURL := worker.RetrieveParentsOfShortlyURLs(conn, ctx, url, outputRedirectsChannel)
 		gc.JSON(http.StatusOK, fmt.Sprintf("redirecting %v to ---- %v", redirectURL.Redirects, redirectURL.Parent.Urls))
 	}
 	return hn

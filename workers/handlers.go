@@ -27,33 +27,28 @@ func ShortenInputURLs(conn *redis.Conn, ctx *context.Context,
 		}
 	}()
 }
-func DetermineRedisKeys(redirects []string, redisFetchChannel chan<- string) {
-	go func() {
-		for _, redirectURL := range redirects {
-			redisKey := strings.Split(redirectURL, ShortlyServerURL)[1]
-			redisFetchChannel <- redisKey
-		}
-	}()
+func DetermineRedisKeys(conn *redis.Conn, ctx *context.Context,
+	redirects []string, redirectsChannel chan<- string) {
+	for _, redirectURL := range redirects {
+		redisKey := strings.Split(redirectURL, ShortlyServerURL)[1]
+		shortlyRedisClient.FetchKey(conn, ctx, &redisKey, redirectsChannel)
+	}
 }
 func RetrieveParentsOfShortlyURLs(conn *redis.Conn, ctx *context.Context,
-	url DM.InputURL, redisFetchChannel chan string, redirectsChannel chan string) DM.ShortlyURLS {
+	url DM.InputURL, redirectsChannel chan string) DM.ShortlyURLS {
 	shortlyURL := DM.CreateRetrievalURL(url)
-	DetermineRedisKeys(shortlyURL.Redirects, redisFetchChannel)
+	DetermineRedisKeys(conn, ctx, shortlyURL.Redirects, redirectsChannel)
+	x := 0
 	for {
 		select {
-		case redisKey := <-redisFetchChannel:
-			shortlyRedisClient.FetchKey(conn, ctx, &redisKey, redirectsChannel)
 		case shortURL := <-redirectsChannel:
-
+			shortlyURL.Parent.Urls[x] = shortURL
+			x++
+			if x == len(shortlyURL.Redirects) {
+				return shortlyURL
+			}
 		}
 	}
-	x := 0
-	for shortURL := range redirectsChannel {
-		shortlyURL.Parent.Urls[x] = shortURL
-		x++
-	}
-	return shortlyURL
-
 }
 
 func GetShortlyURL(conn *redis.Conn, ctx *context.Context, inpURL DM.InputURL, ipChannel chan string, userInputsChannel chan DM.ShortlyURLS, shortenedURLsOutputChannel chan DM.ShortlyURLS) DM.ShortlyURLS {
